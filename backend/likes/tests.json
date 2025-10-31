@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Toggle like on video",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "video_id": 1,
+        "user_id": 7
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "liked": "boolean",
+        "likes_count": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

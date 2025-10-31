@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Toggle subscription",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "channel_id": 1,
+        "subscriber_id": 7
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "subscribed": "boolean",
+        "subscribers_count": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

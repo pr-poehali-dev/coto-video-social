@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,49 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
+const API_URLS = {
+  videos: 'https://functions.poehali.dev/1124ef87-dafa-4394-b6b3-ed37e94c9637',
+  likes: 'https://functions.poehali.dev/bc2dc355-06f9-4ac5-b7f6-50f28d44016d',
+  subscriptions: 'https://functions.poehali.dev/5ea655a4-f5fc-4ad3-98de-71583bbe1ced'
+};
+
+const USER_ID = 7;
+
+interface Video {
+  id: number;
+  title: string;
+  description: string;
+  author: string;
+  author_avatar: string;
+  views_count: number;
+  likes_count: number;
+  thumbnail_url: string;
+  duration: string;
+  user_id: number;
+  subscribers_count?: number;
+}
+
+interface Comment {
+  id: number;
+  author: string;
+  author_avatar: string;
+  text: string;
+  likes_count: number;
+  time: string;
+}
+
+interface VideoDetail extends Video {
+  comments: Comment[];
+}
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [selectedVideo, setSelectedVideo] = useState<number | null>(null);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [videoDetail, setVideoDetail] = useState<VideoDetail | null>(null);
   const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set());
-  const [subscribedUsers, setSubscribedUsers] = useState<Set<string>>(new Set());
+  const [subscribedUsers, setSubscribedUsers] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(true);
 
   const navItems = [
     { id: 'home', label: 'Главная', icon: 'Home' },
@@ -23,118 +61,115 @@ const Index = () => {
     { id: 'settings', label: 'Настройки', icon: 'Settings' },
   ];
 
-  const videos = [
-    {
-      id: 1,
-      title: 'Удивительный закат на Байкале',
-      author: 'Путешественник',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=traveler',
-      views: '2.3M',
-      likes: 145000,
-      thumbnail: '/placeholder.svg',
-      duration: '3:45',
-    },
-    {
-      id: 2,
-      title: 'Рецепт идеального борща',
-      author: 'Кулинарный Мастер',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=chef',
-      views: '890K',
-      likes: 67000,
-      thumbnail: '/placeholder.svg',
-      duration: '8:12',
-    },
-    {
-      id: 3,
-      title: 'Топ-10 лайфхаков для программистов',
-      author: 'КодМастер',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=coder',
-      views: '1.5M',
-      likes: 98000,
-      thumbnail: '/placeholder.svg',
-      duration: '12:30',
-    },
-    {
-      id: 4,
-      title: 'Танцевальный челлендж 2024',
-      author: 'DanceStar',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=dancer',
-      views: '5.7M',
-      likes: 320000,
-      thumbnail: '/placeholder.svg',
-      duration: '0:45',
-    },
-    {
-      id: 5,
-      title: 'Как я построил дом за месяц',
-      author: 'Строитель Pro',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=builder',
-      views: '780K',
-      likes: 54000,
-      thumbnail: '/placeholder.svg',
-      duration: '15:22',
-    },
-    {
-      id: 6,
-      title: 'Самый милый котёнок в мире',
-      author: 'Котолюб',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=catlover',
-      views: '12M',
-      likes: 890000,
-      thumbnail: '/placeholder.svg',
-      duration: '2:18',
-    },
-  ];
+  useEffect(() => {
+    fetchVideos();
+  }, []);
 
-  const comments = [
-    {
-      id: 1,
-      author: 'Александр К.',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alex',
-      text: 'Потрясающий контент! Спасибо за видео 🔥',
-      likes: 234,
-      time: '2 часа назад',
-    },
-    {
-      id: 2,
-      author: 'Мария В.',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=maria',
-      text: 'Когда будет продолжение?',
-      likes: 89,
-      time: '5 часов назад',
-    },
-    {
-      id: 3,
-      author: 'Дмитрий С.',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=dmitry',
-      text: 'Лучшее видео, что я видел за последнее время!',
-      likes: 156,
-      time: '1 день назад',
-    },
-  ];
+  useEffect(() => {
+    if (selectedVideo) {
+      fetchVideoDetail(selectedVideo);
+    }
+  }, [selectedVideo]);
 
-  const handleLike = (videoId: number) => {
-    setLikedVideos((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(videoId)) {
-        newSet.delete(videoId);
-      } else {
-        newSet.add(videoId);
-      }
-      return newSet;
-    });
+  const fetchVideos = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(API_URLS.videos);
+      const data = await response.json();
+      setVideos(data);
+    } catch (error) {
+      console.error('Failed to fetch videos:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubscribe = (author: string) => {
-    setSubscribedUsers((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(author)) {
-        newSet.delete(author);
-      } else {
-        newSet.add(author);
+  const fetchVideoDetail = async (videoId: number) => {
+    try {
+      const response = await fetch(`${API_URLS.videos}?id=${videoId}`);
+      const data = await response.json();
+      setVideoDetail(data);
+    } catch (error) {
+      console.error('Failed to fetch video detail:', error);
+    }
+  };
+
+  const handleLike = async (videoId: number) => {
+    try {
+      const response = await fetch(API_URLS.likes, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: videoId, user_id: USER_ID })
+      });
+      const data = await response.json();
+      
+      setLikedVideos((prev) => {
+        const newSet = new Set(prev);
+        if (data.liked) {
+          newSet.add(videoId);
+        } else {
+          newSet.delete(videoId);
+        }
+        return newSet;
+      });
+
+      setVideos(prev => prev.map(v => 
+        v.id === videoId ? { ...v, likes_count: data.likes_count } : v
+      ));
+
+      if (videoDetail && videoDetail.id === videoId) {
+        setVideoDetail({ ...videoDetail, likes_count: data.likes_count });
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    }
+  };
+
+  const handleSubscribe = async (userId: number) => {
+    try {
+      const response = await fetch(API_URLS.subscriptions, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel_id: userId, subscriber_id: USER_ID })
+      });
+      const data = await response.json();
+      
+      setSubscribedUsers((prev) => {
+        const newSet = new Set(prev);
+        if (data.subscribed) {
+          newSet.add(userId);
+        } else {
+          newSet.delete(userId);
+        }
+        return newSet;
+      });
+
+      if (videoDetail && videoDetail.user_id === userId) {
+        setVideoDetail({ ...videoDetail, subscribers_count: data.subscribers_count });
+      }
+    } catch (error) {
+      console.error('Failed to toggle subscription:', error);
+    }
+  };
+
+  const formatViews = (count: number) => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(0)}K`;
+    }
+    return count.toString();
+  };
+
+  const formatSubscribers = (count: number) => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(0)}K`;
+    }
+    return count.toString();
   };
 
   return (
@@ -192,12 +227,19 @@ const Index = () => {
         </header>
 
         <div className="flex-1 overflow-auto">
-          {selectedVideo ? (
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Загрузка...</p>
+              </div>
+            </div>
+          ) : selectedVideo && videoDetail ? (
             <div className="grid lg:grid-cols-3 gap-6 p-6">
               <div className="lg:col-span-2 space-y-6">
                 <div className="aspect-video bg-card rounded-xl overflow-hidden relative group">
                   <img
-                    src={videos.find((v) => v.id === selectedVideo)?.thumbnail}
+                    src={videoDetail.thumbnail_url}
                     alt="Video"
                     className="w-full h-full object-cover"
                   />
@@ -209,33 +251,29 @@ const Index = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <h2 className="text-2xl font-bold">
-                    {videos.find((v) => v.id === selectedVideo)?.title}
-                  </h2>
+                  <h2 className="text-2xl font-bold">{videoDetail.title}</h2>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={videos.find((v) => v.id === selectedVideo)?.avatar} />
-                        <AvatarFallback>A</AvatarFallback>
+                        <AvatarImage src={videoDetail.author_avatar} />
+                        <AvatarFallback>{videoDetail.author[0]}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold">
-                          {videos.find((v) => v.id === selectedVideo)?.author}
+                        <p className="font-semibold">{videoDetail.author}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatSubscribers(videoDetail.subscribers_count || 0)} подписчиков
                         </p>
-                        <p className="text-sm text-muted-foreground">2.5M подписчиков</p>
                       </div>
                       <Button
-                        onClick={() => handleSubscribe(videos.find((v) => v.id === selectedVideo)?.author || '')}
+                        onClick={() => handleSubscribe(videoDetail.user_id)}
                         className={
-                          subscribedUsers.has(videos.find((v) => v.id === selectedVideo)?.author || '')
+                          subscribedUsers.has(videoDetail.user_id)
                             ? 'bg-muted text-foreground hover:bg-muted/80'
                             : 'gradient-primary'
                         }
                       >
-                        {subscribedUsers.has(videos.find((v) => v.id === selectedVideo)?.author || '')
-                          ? 'Подписан'
-                          : 'Подписаться'}
+                        {subscribedUsers.has(videoDetail.user_id) ? 'Подписан' : 'Подписаться'}
                       </Button>
                     </div>
 
@@ -247,7 +285,7 @@ const Index = () => {
                         className={likedVideos.has(selectedVideo) ? 'text-primary border-primary' : ''}
                       >
                         <Icon name="ThumbsUp" size={20} className="mr-2" />
-                        {videos.find((v) => v.id === selectedVideo)?.likes.toLocaleString()}
+                        {videoDetail.likes_count.toLocaleString()}
                       </Button>
                       <Button size="lg" variant="outline">
                         <Icon name="Share2" size={20} className="mr-2" />
@@ -259,20 +297,15 @@ const Index = () => {
                   <Card className="bg-card">
                     <CardContent className="p-4">
                       <div className="flex gap-4 text-sm text-muted-foreground mb-2">
-                        <span>{videos.find((v) => v.id === selectedVideo)?.views} просмотров</span>
-                        <span>•</span>
-                        <span>2 дня назад</span>
+                        <span>{formatViews(videoDetail.views_count)} просмотров</span>
                       </div>
-                      <p className="text-foreground">
-                        Описание видео с подробной информацией о контенте. Здесь может быть длинное описание,
-                        ссылки и другая полезная информация для зрителей.
-                      </p>
+                      <p className="text-foreground">{videoDetail.description}</p>
                     </CardContent>
                   </Card>
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-xl font-bold">Комментарии ({comments.length})</h3>
+                  <h3 className="text-xl font-bold">Комментарии ({videoDetail.comments.length})</h3>
 
                   <div className="flex gap-3">
                     <Avatar className="h-10 w-10">
@@ -285,10 +318,10 @@ const Index = () => {
                   </div>
 
                   <div className="space-y-4">
-                    {comments.map((comment) => (
+                    {videoDetail.comments.map((comment) => (
                       <div key={comment.id} className="flex gap-3 animate-fade-in">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={comment.avatar} />
+                          <AvatarImage src={comment.author_avatar} />
                           <AvatarFallback>{comment.author[0]}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
@@ -300,7 +333,7 @@ const Index = () => {
                           <div className="flex items-center gap-4 text-sm">
                             <button className="flex items-center gap-1 hover:text-primary transition-colors">
                               <Icon name="ThumbsUp" size={16} />
-                              <span>{comment.likes}</span>
+                              <span>{comment.likes_count}</span>
                             </button>
                             <button className="hover:text-primary transition-colors">Ответить</button>
                           </div>
@@ -327,7 +360,7 @@ const Index = () => {
                             <div className="flex gap-3">
                               <div className="relative w-40 aspect-video rounded-lg overflow-hidden flex-shrink-0">
                                 <img
-                                  src={video.thumbnail}
+                                  src={video.thumbnail_url}
                                   alt={video.title}
                                   className="w-full h-full object-cover"
                                 />
@@ -338,7 +371,9 @@ const Index = () => {
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-semibold text-sm line-clamp-2 mb-1">{video.title}</h4>
                                 <p className="text-xs text-muted-foreground mb-1">{video.author}</p>
-                                <p className="text-xs text-muted-foreground">{video.views} просмотров</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatViews(video.views_count)} просмотров
+                                </p>
                               </div>
                             </div>
                           </CardContent>
@@ -366,7 +401,7 @@ const Index = () => {
                     <CardContent className="p-0">
                       <div className="relative aspect-video overflow-hidden rounded-t-xl">
                         <img
-                          src={video.thumbnail}
+                          src={video.thumbnail_url}
                           alt={video.title}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                         />
@@ -386,18 +421,18 @@ const Index = () => {
                       <div className="p-4">
                         <div className="flex gap-3">
                           <Avatar className="h-10 w-10 flex-shrink-0">
-                            <AvatarImage src={video.avatar} />
+                            <AvatarImage src={video.author_avatar} />
                             <AvatarFallback>{video.author[0]}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold line-clamp-2 mb-1">{video.title}</h3>
                             <p className="text-sm text-muted-foreground">{video.author}</p>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              <span>{video.views} просмотров</span>
+                              <span>{formatViews(video.views_count)} просмотров</span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
                                 <Icon name="ThumbsUp" size={14} />
-                                {(video.likes / 1000).toFixed(0)}K
+                                {formatViews(video.likes_count)}
                               </span>
                             </div>
                           </div>
