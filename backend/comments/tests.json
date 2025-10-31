@@ -1,0 +1,21 @@
+{
+  "tests": [
+    {
+      "name": "Post new comment",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "video_id": 1,
+        "user_id": 7,
+        "text": "Отличное видео!"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "id": "number",
+        "text": "string",
+        "author": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

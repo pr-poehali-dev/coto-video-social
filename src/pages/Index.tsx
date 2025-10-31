@@ -6,11 +6,13 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import Shorts from '@/components/Shorts';
 
 const API_URLS = {
   videos: 'https://functions.poehali.dev/1124ef87-dafa-4394-b6b3-ed37e94c9637',
   likes: 'https://functions.poehali.dev/bc2dc355-06f9-4ac5-b7f6-50f28d44016d',
-  subscriptions: 'https://functions.poehali.dev/5ea655a4-f5fc-4ad3-98de-71583bbe1ced'
+  subscriptions: 'https://functions.poehali.dev/5ea655a4-f5fc-4ad3-98de-71583bbe1ced',
+  comments: 'https://functions.poehali.dev/5d7d1834-b8c2-47ad-8afb-c7493b78bf31'
 };
 
 const USER_ID = 7;
@@ -50,9 +52,11 @@ const Index = () => {
   const [likedVideos, setLikedVideos] = useState<Set<number>>(new Set());
   const [subscribedUsers, setSubscribedUsers] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [newComment, setNewComment] = useState('');
 
   const navItems = [
     { id: 'home', label: 'Главная', icon: 'Home' },
+    { id: 'shorts', label: 'Shorts', icon: 'Zap' },
     { id: 'trending', label: 'Трендовое', icon: 'TrendingUp' },
     { id: 'subscriptions', label: 'Подписки', icon: 'Users' },
     { id: 'profile', label: 'Профиль', icon: 'User' },
@@ -171,6 +175,34 @@ const Index = () => {
     }
     return count.toString();
   };
+
+  const handlePostComment = async () => {
+    if (!newComment.trim() || !selectedVideo) return;
+
+    try {
+      const response = await fetch(API_URLS.comments, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: selectedVideo, user_id: USER_ID, text: newComment })
+      });
+      const data = await response.json();
+      
+      if (videoDetail) {
+        setVideoDetail({
+          ...videoDetail,
+          comments: [data, ...videoDetail.comments]
+        });
+      }
+      
+      setNewComment('');
+    } catch (error) {
+      console.error('Failed to post comment:', error);
+    }
+  };
+
+  if (activeTab === 'shorts') {
+    return <Shorts />;
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -312,8 +344,21 @@ const Index = () => {
                       <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=user" />
                       <AvatarFallback>Я</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <Input placeholder="Написать комментарий..." className="bg-input" />
+                    <div className="flex-1 flex gap-2">
+                      <Input 
+                        placeholder="Написать комментарий..." 
+                        className="bg-input flex-1" 
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handlePostComment()}
+                      />
+                      <Button 
+                        onClick={handlePostComment}
+                        disabled={!newComment.trim()}
+                        className="gradient-primary"
+                      >
+                        <Icon name="Send" size={18} />
+                      </Button>
                     </div>
                   </div>
 
